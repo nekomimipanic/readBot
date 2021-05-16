@@ -1,5 +1,6 @@
 import subprocess
 import re
+import tempfile
 
 # ************************************************
 # remove_custom_emoji
@@ -46,17 +47,24 @@ def remove_log(text):
     return re.sub(pattern,'',text)   # 置換処理
 
 # ************************************************
-# user_custam
+# remove_nl
+# 改行殺し 
+# ************************************************
+def remove_lf(text):
+    return ''.join(text.splitlines())   # 置換処理
+
+# ************************************************
+# user_custom
 # ユーザ登録した文字を読み替える
 # ************************************************
-def user_custam(text):
+def user_custom(text):
 
-    f = open('C:/open_jtalk/bin/dic.txt', 'r')
+    f = open('/opt/readBot-master/dic.txt', 'r')
     line = f.readline()
 
     while line:
         pattern = line.strip().split(',')
-        if pattern[0] in text:
+        if pattern[0] in text and len(pattern) >= 2:
             text = text.replace(pattern[0], pattern[1])
             print('置換後のtext:'+text)
             break
@@ -74,7 +82,7 @@ def user_custam(text):
 # 引数：inputText
 # 書き込みファイル：input.txt、output.wav
 # ************************************************
-def creat_WAV(inputText):
+def creat_WAV(inputText,voice_path):
         # message.contentをテキストファイルに書き込み
 
     inputText = remove_custom_emoji(inputText)   # 絵文字IDは読み上げない
@@ -82,39 +90,27 @@ def creat_WAV(inputText):
     inputText = url_shouryaku(inputText)   # URLなら省略
     inputText = remove_picture(inputText)   # 画像なら読み上げない
     inputText = remove_log(inputText)   # 参加ログなら読み上げない
-    inputText = user_custam(inputText)   # ユーザ登録した文字を読み替える
-    input_file = 'input.txt'
+    inputText = remove_lf(inputText)   # 改行削除 
+    inputText = user_custom(inputText)   # ユーザ登録した文字を読み替える
+    with tempfile.NamedTemporaryFile(mode='w') as tmp:
+        tmp.write(inputText)
+        tmp.seek(0)
+    speed = 0.8 
+    dic_path = "/var/lib/mecab/dic/open-jtalk/naist-jdic/"
+    model_path = "/usr/share/hts-voice/mei/mei_normal.htsvoice"
+    model_path = "/usr/share/hts-voice/tohoku-f01/tohoku-f01-neutral.htsvoice"
+#    voice_path="/tmp/output.wav"
 
-    with open(input_file,'w',encoding='shift_jis') as file:
-        file.write(inputText)
-
-    command = 'C:/open_jtalk/bin/open_jtalk -x {x} -m {m} -r {r} -ow {ow} {input_file}'
-
-    #辞書のPath
-    x = 'C:/open_jtalk/bin/dic'
-
-    #ボイスファイルのPath
-    #m = 'C:/open_jtalk/bin/nitech_jp_atr503_m001.htsvoice'
-    #m = 'C:/open_jtalk/bin/mei/mei_sad.htsvoice'
-    #m = 'C:/open_jtalk/bin/mei/mei_angry.htsvoice'
-    m = 'C:/open_jtalk/bin/mei/mei_bashful.htsvoice'
-    #m = 'C:/open_jtalk/bin/mei/mei_happy.htsvoice'
-    #m = 'C:/open_jtalk/bin/mei/mei_normal.htsvoice'
-
-    #発声のスピード
-    #r = '2.0'
-    r = '1.2'
-
-    #出力ファイル名　and　Path
-    ow = 'output.wav'
-
-    args= {'x':x, 'm':m, 'r':r, 'ow':ow, 'input_file':input_file}
-
-    cmd= command.format(**args)
-    print(cmd)
-
-    subprocess.run(cmd)
-    return True
+    with tempfile.NamedTemporaryFile(mode='w+') as tmp:
+        tmp.write(inputText)
+        tmp.seek(0)
+        command = 'open_jtalk -g -5 -a 0.6 -x {} -m {} -r {} -ow {} {}'.format(dic_path, model_path, speed, voice_path, tmp.name)
+        print(command)
+#        tmp.close()
+        proc = subprocess.run(
+            command,
+            shell  = True,
+        )
 
 if __name__ == '__main__':
     creat_WAV('テスト')
