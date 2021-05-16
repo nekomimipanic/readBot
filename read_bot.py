@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import discord
 from discord.ext import commands
 import asyncio
@@ -5,8 +6,11 @@ import os
 import subprocess
 import ffmpeg
 from voice_generator import creat_WAV
+import tempfile
+import os
+import time
 
-client = commands.Bot(command_prefix='.')
+client = commands.Bot(command_prefix='!')
 voice_client = None
 
 
@@ -25,6 +29,7 @@ async def join(ctx):
     vc = ctx.author.voice.channel
     print('#voicechannelに接続')
     await vc.connect()
+    await ctx.send('`読み替えは「!reg 名前　読み方」で登録します。読上終了は!byeで、\n別のチャンネルに呼ぶときは、そのチャンネルで!joinしてください`')
 
 @client.command()
 async def bye(ctx):
@@ -33,8 +38,8 @@ async def bye(ctx):
     await ctx.voice_client.disconnect()
 
 @client.command()
-async def register(ctx, arg1, arg2):
-    with open('C:/open_jtalk/bin/dic.txt', mode='a') as f:
+async def reg(ctx, arg1, arg2):
+    with open('/opt/readBot-master/dic.txt', mode='a') as f:
         f.write('\n'+ arg1 + ',' + arg2)
         print('dic.txtに書き込み：''\n'+ arg1 + ',' + arg2)
     await ctx.send('`' + arg1+'` を `'+arg2+'` として登録しました')
@@ -56,19 +61,26 @@ async def on_message(message):
     print('---on_message_start---')
     msgclient = message.guild.voice_client
     print(msgclient)
-    if message.content.startswith('.'):
+    if message.content.startswith('!'):
         pass
-
+    elif message.content.startswith('`'):
+        pass
+    elif message.content.startswith('<'):
+        pass
     else:
+        while (message.guild.voice_client.is_playing()):
+            await asyncio.sleep(1)
         if message.guild.voice_client:
-            print('#message.content:'+ message.content)
-            creat_WAV(message.content)
-            source = discord.FFmpegPCMAudio("output.wav")
+            vt_fd, voice_tmp = tempfile.mkstemp()
+            print('#message.content:'+ message.author.name + ':' + message.content)
+            creat_WAV(message.author.name + '  ' + message.content, voice_tmp)
+            source = discord.FFmpegPCMAudio(voice_tmp)
             message.guild.voice_client.play(source)
+            await asyncio.sleep(0.5)
+            os.remove(voice_tmp)
         else:
             pass
     await client.process_commands(message)
     print('---on_message_end---')
 
-
-client.run("トークン")
+client.run("でぃすこーどのえーぴーあいきー")
